@@ -1,6 +1,6 @@
 # MeshSense - ESP32-S3 TFT Feather WiFi Provisioning
 
-[![PlatformIO CI](https://github.com/yourusername/mesh-sense/actions/workflows/build.yml/badge.svg)](https://github.com/yourusername/mesh-sense/actions/workflows/build.yml)
+[![PlatformIO CI](https://github.com/arunkumar-mourougappane/mesh-sense/actions/workflows/build.yml/badge.svg)](https://github.com/arunkumar-mourougappane/mesh-sense/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A PlatformIO project for the Adafruit ESP32-S3 TFT Feather board with WiFi provisioning capabilities and multi-threaded display management.
