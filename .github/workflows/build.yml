@@ -1,0 +1,155 @@
+name: PlatformIO CI
+
+on:
+  push:
+    branches: [ main, develop, feature/** ]
+  pull_request:
+    branches: [ main, develop ]
+  merge_group:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Cache PlatformIO
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.platformio
+          .pio
+        key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+        restore-keys: |
+          ${{ runner.os }}-pio-
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+        
+    - name: Build firmware
+      run: pio run
+      
+    - name: Check firmware size
+      id: check_size
+      run: |
+        # Extract memory usage from build output
+        pio run --silent 2>&1 | tee build_output.txt
+        
+        # Parse RAM usage
+        RAM_USED=$(grep -oP "RAM:.*?\K\d+(?= bytes)" build_output.txt || echo "0")
+        RAM_TOTAL=$(grep -oP "RAM:.*?from \K\d+(?= bytes)" build_output.txt || echo "327680")
+        RAM_PERCENT=$(grep -oP "RAM:.*?\[\s*[=\s]*\]\s*\K[\d.]+(?=%)" build_output.txt || echo "0")
+        
+        # Parse Flash usage  
+        FLASH_USED=$(grep -oP "Flash:.*?\K\d+(?= bytes)" build_output.txt || echo "0")
+        FLASH_TOTAL=$(grep -oP "Flash:.*?from \K\d+(?= bytes)" build_output.txt || echo "1441792")
+        FLASH_PERCENT=$(grep -oP "Flash:.*?\[\s*[=\s]*\]\s*\K[\d.]+(?=%)" build_output.txt || echo "0")
+        
+        echo "RAM Usage: $RAM_USED / $RAM_TOTAL bytes ($RAM_PERCENT%)"
+        echo "Flash Usage: $FLASH_USED / $FLASH_TOTAL bytes ($FLASH_PERCENT%)"
+        
+        # Save to outputs
+        echo "ram_used=$RAM_USED" >> $GITHUB_OUTPUT
+        echo "ram_total=$RAM_TOTAL" >> $GITHUB_OUTPUT
+        echo "ram_percent=$RAM_PERCENT" >> $GITHUB_OUTPUT
+        echo "flash_used=$FLASH_USED" >> $GITHUB_OUTPUT
+        echo "flash_total=$FLASH_TOTAL" >> $GITHUB_OUTPUT
+        echo "flash_percent=$FLASH_PERCENT" >> $GITHUB_OUTPUT
+        
+        # Check limits (fail if > 80% for RAM or > 90% for Flash)
+        RAM_LIMIT=80
+        FLASH_LIMIT=90
+        
+        if (( $(echo "$RAM_PERCENT > $RAM_LIMIT" | bc -l) )); then
+          echo "::error::RAM usage ($RAM_PERCENT%) exceeds limit ($RAM_LIMIT%)"
+          exit 1
+        fi
+        
+        if (( $(echo "$FLASH_PERCENT > $FLASH_LIMIT" | bc -l) )); then
+          echo "::error::Flash usage ($FLASH_PERCENT%) exceeds limit ($FLASH_LIMIT%)"
+          exit 1
+        fi
+        
+        echo "✅ Memory usage within acceptable limits"
+        
+    - name: Create size badge data
+      if: github.ref == 'refs/heads/main'
+      run: |
+        mkdir -p badges
+        cat > badges/memory.json << EOF
+        {
+          "schemaVersion": 1,
+          "label": "RAM",
+          "message": "${{ steps.check_size.outputs.ram_percent }}%",
+          "color": "$(if (( $(echo "${{ steps.check_size.outputs.ram_percent }} < 50" | bc -l) )); then echo 'green'; elif (( $(echo "${{ steps.check_size.outputs.ram_percent }} < 80" | bc -l) )); then echo 'yellow'; else echo 'orange'; fi)"
+        }
+        EOF
+        
+        cat > badges/flash.json << EOF
+        {
+          "schemaVersion": 1,
+          "label": "Flash",
+          "message": "${{ steps.check_size.outputs.flash_percent }}%",
+          "color": "$(if (( $(echo "${{ steps.check_size.outputs.flash_percent }} < 60" | bc -l) )); then echo 'green'; elif (( $(echo "${{ steps.check_size.outputs.flash_percent }} < 90" | bc -l) )); then echo 'yellow'; else echo 'orange'; fi)"
+        }
+        EOF
+        
+    - name: Generate build report
+      if: always()
+      run: |
+        cat > build_report.md << 'EOF'
+        ## Build Report
+        
+        **Status:** ${{ job.status }}
+        
+        ### Memory Usage
+        
+        | Resource | Used | Total | Percentage | Limit | Status |
+        |----------|------|-------|------------|-------|--------|
+        | RAM | ${{ steps.check_size.outputs.ram_used }} bytes | ${{ steps.check_size.outputs.ram_total }} bytes | ${{ steps.check_size.outputs.ram_percent }}% | 80% | ${{ steps.check_size.outputs.ram_percent < 80 && '✅' || '⚠️' }} |
+        | Flash | ${{ steps.check_size.outputs.flash_used }} bytes | ${{ steps.check_size.outputs.flash_total }} bytes | ${{ steps.check_size.outputs.flash_percent }}% | 90% | ${{ steps.check_size.outputs.flash_percent < 90 && '✅' || '⚠️' }} |
+        
+        ### Firmware Details
+        
+        - **Board:** Adafruit ESP32-S3 TFT Feather
+        - **Platform:** Espressif32
+        - **Framework:** Arduino
+        - **Build Time:** ${{ github.event.head_commit.timestamp }}
+        - **Commit:** ${{ github.sha }}
+        
+        EOF
+        cat build_report.md
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-${{ github.sha }}
+        path: |
+          .pio/build/adafruit_feather_esp32s3_tft/firmware.bin
+          .pio/build/adafruit_feather_esp32s3_tft/firmware.elf
+          build_report.md
+        retention-days: 30
+        
+    - name: Comment PR with build results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('build_report.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: report
+          });
