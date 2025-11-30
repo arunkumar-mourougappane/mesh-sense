@@ -40,6 +40,11 @@ This separation ensures display updates never block WiFi operations or main appl
 - Adafruit ESP32-S3 TFT Feather board
 - USB-C cable
 
+**Or for simulation:**
+
+- [Wokwi VS Code Extension](https://marketplace.visualstudio.com/items?itemName=wokwi.wokwi-vscode) for testing without hardware
+- See [WOKWI.md](WOKWI.md) for simulator setup
+
 ### Building
 
 ```bash
@@ -118,6 +123,8 @@ mesh-sense/
 │       └── README.md
 ├── include/
 │   └── wifi_config.h         # WiFi configuration constants
+├── wokwi.toml                # Wokwi simulator configuration
+├── diagram.json              # Wokwi hardware diagram
 └── platformio.ini            # Project configuration
 ```
 

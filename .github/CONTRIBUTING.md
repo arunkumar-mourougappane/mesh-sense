@@ -69,6 +69,10 @@ Before submitting a PR:
 # Build the project
 pio run
 
+# Test with Wokwi simulator (no hardware required)
+# VS Code: Press F1 → "Wokwi: Start Simulator"
+# CLI: wokwi-cli .
+
 # Check for errors
 pio check
 

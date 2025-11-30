@@ -46,3 +46,8 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+
+# Wokwi
+.wokwi
+wokwi-project.txt
+*.wokwi.tmp

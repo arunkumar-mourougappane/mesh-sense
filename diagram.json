@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "author": "Arun Kumar Mourougappane",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-s3-devkitc-1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {
+        "psramSize": "2",
+        "flashSize": "4"
+      }
+    },
+    {
+      "type": "wokwi-st7789",
+      "id": "lcd1",
+      "top": -20,
+      "left": 200,
+      "attrs": {
+        "width": "240",
+        "height": "135"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "esp:TX",
+      "$serialMonitor:RX",
+      "",
+      []
+    ],
+    [
+      "esp:RX",
+      "$serialMonitor:TX",
+      "",
+      []
+    ],
+    [
+      "lcd1:VCC",
+      "esp:3V3",
+      "red",
+      []
+    ],
+    [
+      "lcd1:GND",
+      "esp:GND",
+      "black",
+      []
+    ],
+    [
+      "lcd1:SCL",
+      "esp:12",
+      "green",
+      []
+    ],
+    [
+      "lcd1:SDA",
+      "esp:11",
+      "blue",
+      []
+    ],
+    [
+      "lcd1:RES",
+      "esp:40",
+      "yellow",
+      []
+    ],
+    [
+      "lcd1:DC",
+      "esp:39",
+      "orange",
+      []
+    ],
+    [
+      "lcd1:CS",
+      "esp:7",
+      "purple",
+      []
+    ],
+    [
+      "lcd1:BLK",
+      "esp:45",
+      "white",
+      []
+    ]
+  ],
+  "dependencies": {}
+}
